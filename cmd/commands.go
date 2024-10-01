@@ -49,11 +49,84 @@ func main() {
 		deleteCommand(client, os.Args[2:])
 	case "list":
 		listCommand(client, os.Args[2:])
+	case "describe":
+		describeCommand(client, os.Args[2:])
 	case "relation":
 		relationCommand(client, os.Args[2:])
 	default:
 		fmt.Println("Expected 'create', 'read', 'update', 'delete', 'list', 'relation' subcommands")
 		os.Exit(1)
+	}
+}
+
+func describeCommand(client *api.Client, args []string) {
+	describeCmd := flag.NewFlagSet("describe", flag.ExitOnError)
+	entityName := describeCmd.String("type", "", "Entity type to describe")
+	describeCmd.Parse(args)
+
+	if *entityName == "" {
+		describeCmd.Usage()
+		os.Exit(1)
+	}
+
+	model, err := client.GetEntityModel(*entityName)
+	if err != nil {
+		utils.ErrorLogger.Println("Failed to get entity model:", err)
+		os.Exit(1)
+	}
+
+	displayEntityModel(*entityName, model)
+}
+
+func displayEntityModel(entityName string, model *api.EntityModel) {
+	standardColumns := map[string]struct{}{
+		"id":           {},
+		"version":      {},
+		"created_at":   {},
+		"updated_at":   {},
+		"reference_id": {},
+		"permission":   {},
+	}
+
+	// Initialize tabwriter
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+
+	fmt.Fprintf(w, "Entity: %s\n", entityName)
+	fmt.Fprintln(w, "Columns:")
+	fmt.Fprintln(w, "Name\tType\tData Type\tDescription")
+	fmt.Fprintln(w, "----\t----\t---------\t-----------")
+
+	for name, col := range model.ColumnModel {
+		if _, ok := standardColumns[name]; ok {
+			continue // Skip standard columns
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", name, col.ColumnType, col.DataType, col.ColumnDescription)
+	}
+
+	w.Flush()
+
+	if len(model.Relationships) > 0 {
+		fmt.Println("\nRelationships:")
+		fmt.Fprintln(w, "Name\tType\tRelated Entity")
+		fmt.Fprintln(w, "----\t----\t--------------")
+
+		for name, rel := range model.Relationships {
+			fmt.Fprintf(w, "%s\t%s\t%s\n", name, rel.RelationType, rel.RelatedType)
+		}
+
+		w.Flush()
+	}
+
+	if len(model.Actions) > 0 {
+		fmt.Println("\nActions:")
+		fmt.Fprintln(w, "Name\tLabel\tDescription")
+		fmt.Fprintln(w, "----\t-----\t-----------")
+
+		for _, action := range model.Actions {
+			fmt.Fprintf(w, "%s\t%s\t%s\n", action.Name, action.Label, action.Description)
+		}
+
+		w.Flush()
 	}
 }
 
