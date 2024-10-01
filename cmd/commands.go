@@ -25,7 +25,7 @@ func main() {
 	}
 
 	// Create API client
-	client, err := api.NewClient(config.BaseURL)
+	client, err := api.NewClient(config.BaseURL, config.APIKey) // Modify this line
 	if err != nil {
 		utils.ErrorLogger.Println("Failed to create API client:", err)
 		os.Exit(1)

@@ -17,10 +17,11 @@ type Client struct {
 	BaseURL    *url.URL
 	HTTPClient *http.Client
 	Headers    http.Header
+	APIKey     string // Add this line
 }
 
-// NewClient creates a new API client with the specified base URL.
-func NewClient(baseURL string) (*Client, error) {
+// NewClient creates a new API client with the specified base URL and API key.
+func NewClient(baseURL string, apiKey string) (*Client, error) { // Modify this line
 	parsedURL, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid base URL: %w", err)
@@ -32,11 +33,17 @@ func NewClient(baseURL string) (*Client, error) {
 			Timeout: 30 * time.Second,
 		},
 		Headers: make(http.Header),
+		APIKey:  apiKey, // Add this line
 	}
 
 	// Set default headers
 	client.Headers.Set("Content-Type", "application/vnd.api+json")
 	client.Headers.Set("Accept", "application/vnd.api+json")
+
+	// Set Authorization header if API key is provided
+	if apiKey != "" {
+		client.Headers.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+	}
 
 	return client, nil
 }
