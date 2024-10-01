@@ -1,0 +1,26 @@
+project_name: dcli
+builds:
+  - main: ./cmd/commands.go
+    binary: dcli
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -ldflags="-s -w"
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+checksum:
+  name_template: "checksums.txt"
+release:
+  github:
+    owner: artpar
+    name: dcli
