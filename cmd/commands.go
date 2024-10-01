@@ -34,7 +34,7 @@ func main() {
 
 	// Parse command-line arguments
 	if len(os.Args) < 2 {
-		fmt.Println("Expected 'create', 'read', 'update', 'delete', 'list', 'relation', 'describe', 'permission' subcommands")
+		fmt.Println("Expected 'create', 'read', 'update', 'delete', 'list', 'relation', 'describe', 'permission', 'actions', 'execute' subcommands")
 		os.Exit(1)
 	}
 
@@ -55,10 +55,74 @@ func main() {
 		describeCommand(client, os.Args[2:])
 	case "permission":
 		permissionCommand(client, os.Args[2:])
+	case "actions":
+		actionsCommand(client, os.Args[2:])
+	case "execute":
+		executeCommand(client, os.Args[2:])
 	default:
-		fmt.Println("Expected 'create', 'read', 'update', 'delete', 'list', 'relation', 'describe', 'permission' subcommands")
+		fmt.Println("Expected 'create', 'read', 'update', 'delete', 'list', 'relation', 'describe', 'permission', 'actions', 'execute' subcommands")
 		os.Exit(1)
 	}
+}
+
+func actionsCommand(client *api.Client, args []string) {
+	actionsCmd := flag.NewFlagSet("actions", flag.ExitOnError)
+	entityType := actionsCmd.String("type", "", "Entity type to list actions for")
+	actionsCmd.Parse(args)
+
+	actions, err := client.ListActions(*entityType)
+	if err != nil {
+		utils.ErrorLogger.Println("Failed to list actions:", err)
+		os.Exit(1)
+	}
+
+	// Display actions
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "Name\tLabel\tOnType\tInstanceOptional")
+	fmt.Fprintln(w, "----\t-----\t------\t----------------")
+	for _, action := range actions {
+		fmt.Fprintf(w, "%s\t%s\t%s\t%v\n", action.Name, action.Label, action.OnType, action.InstanceOptional)
+	}
+	w.Flush()
+}
+
+func executeCommand(client *api.Client, args []string) {
+	executeCmd := flag.NewFlagSet("execute", flag.ExitOnError)
+	actionName := executeCmd.String("name", "", "Name of the action to execute")
+	executeCmd.Parse(args)
+
+	if *actionName == "" {
+		fmt.Println("Action name is required.")
+		executeCmd.Usage()
+		os.Exit(1)
+	}
+
+	// Get action details to know input fields
+	action, err := client.GetAction(*actionName)
+	if err != nil {
+		utils.ErrorLogger.Println("Failed to get action details:", err)
+		os.Exit(1)
+	}
+
+	// Collect input values from the user
+	inputs := make(map[string]interface{})
+	for _, field := range action.InFields {
+		fmt.Printf("Enter value for %s (%s): ", field.Name, field.ColumnType)
+		var value string
+		fmt.Scanln(&value)
+		inputs[field.Name] = value
+	}
+
+	// Execute the action
+	result, err := client.ExecuteAction(*actionName, inputs)
+	if err != nil {
+		utils.ErrorLogger.Println("Failed to execute action:", err)
+		os.Exit(1)
+	}
+
+	// Display the result
+	fmt.Println("Action executed successfully. Result:")
+	fmt.Println(result)
 }
 
 func permissionCommand(client *api.Client, args []string) {
