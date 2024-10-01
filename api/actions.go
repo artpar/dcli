@@ -11,12 +11,14 @@ import (
 	"net/url"
 )
 
-// ListActions lists available actions, optionally filtered by entity type.
+// ListActions lists available actions filtered by entity type.
 func (c *Client) ListActions(entityType string) ([]Action, error) {
-	path := "action/"
-	if entityType != "" {
-		path += "?type=" + url.QueryEscape(entityType)
+	if entityType == "" {
+		return nil, fmt.Errorf("entityType is required")
 	}
+
+	// Construct the URL with filters
+	path := fmt.Sprintf("api/action?filter[OnType]=%s", url.QueryEscape(entityType))
 	rel, err := url.Parse(path)
 	if err != nil {
 		return nil, fmt.Errorf("invalid path: %w", err)
@@ -43,7 +45,8 @@ func (c *Client) ListActions(entityType string) ([]Action, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, fmt.Errorf("failed to list actions: %s", resp.Status)
+		body, _ := ioutil.ReadAll(resp.Body)
+		return nil, fmt.Errorf("failed to list actions: %s\n%s", resp.Status, string(body))
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -51,18 +54,45 @@ func (c *Client) ListActions(entityType string) ([]Action, error) {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var actions []Action
-	err = json.Unmarshal(body, &actions)
+	// Parse JSON API response
+	var jsonResponse struct {
+		Data []struct {
+			ID         string                 `json:"id"`
+			Type       string                 `json:"type"`
+			Attributes map[string]interface{} `json:"attributes"`
+		} `json:"data"`
+	}
+
+	err = json.Unmarshal(body, &jsonResponse)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse actions: %w", err)
+	}
+
+	var actions []Action
+	for _, item := range jsonResponse.Data {
+		var action Action
+		action.ReferenceId = item.ID
+		action.OnType = item.Type
+
+		// Map attributes to Action struct
+		err := mapToStruct(item.Attributes, &action)
+		if err != nil {
+			return nil, fmt.Errorf("failed to map action attributes: %w", err)
+		}
+
+		actions = append(actions, action)
 	}
 
 	return actions, nil
 }
 
-// GetAction retrieves the details of a specific action.
-func (c *Client) GetAction(actionName string) (*Action, error) {
-	path := fmt.Sprintf("action/%s", actionName)
+func (c *Client) GetAction(entityType, actionName string) (*Action, error) {
+	if entityType == "" || actionName == "" {
+		return nil, fmt.Errorf("entityType and actionName are required")
+	}
+
+	// Construct the URL with filters
+	path := fmt.Sprintf("api/action?filter[OnType]=%s&filter[Name]=%s", url.QueryEscape(entityType), url.QueryEscape(actionName))
 	rel, err := url.Parse(path)
 	if err != nil {
 		return nil, fmt.Errorf("invalid path: %w", err)
@@ -89,7 +119,8 @@ func (c *Client) GetAction(actionName string) (*Action, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, fmt.Errorf("failed to get action: %s", resp.Status)
+		body, _ := ioutil.ReadAll(resp.Body)
+		return nil, fmt.Errorf("failed to get action: %s\n%s", resp.Status, string(body))
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -97,18 +128,41 @@ func (c *Client) GetAction(actionName string) (*Action, error) {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var action Action
-	err = json.Unmarshal(body, &action)
+	// Parse JSON API response
+	var jsonResponse struct {
+		Data []struct {
+			ID         string                 `json:"id"`
+			Type       string                 `json:"type"`
+			Attributes map[string]interface{} `json:"attributes"`
+		} `json:"data"`
+	}
+
+	err = json.Unmarshal(body, &jsonResponse)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse action: %w", err)
+	}
+
+	if len(jsonResponse.Data) == 0 {
+		return nil, fmt.Errorf("action not found")
+	}
+
+	item := jsonResponse.Data[0]
+
+	var action Action
+	action.ReferenceId = item.ID
+	action.OnType = item.Type
+
+	// Map attributes to Action struct
+	err = mapToStruct(item.Attributes, &action)
+	if err != nil {
+		return nil, fmt.Errorf("failed to map action attributes: %w", err)
 	}
 
 	return &action, nil
 }
 
-// ExecuteAction executes the specified action with the given inputs.
-func (c *Client) ExecuteAction(actionName string, inputs map[string]interface{}) (map[string]interface{}, error) {
-	path := fmt.Sprintf("action/%s", actionName)
+func (c *Client) ExecuteAction(entityType, actionName string, inputs map[string]interface{}) (map[string]interface{}, error) {
+	path := fmt.Sprintf("action/%s/%s", url.PathEscape(entityType), url.PathEscape(actionName))
 	rel, err := url.Parse(path)
 	if err != nil {
 		return nil, fmt.Errorf("invalid path: %w", err)
@@ -165,4 +219,13 @@ func (c *Client) ExecuteAction(actionName string, inputs map[string]interface{})
 	}
 
 	return result, nil
+}
+
+// mapToStruct maps a map[string]interface{} to a struct
+func mapToStruct(m map[string]interface{}, s interface{}) error {
+	data, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(data, s)
 }

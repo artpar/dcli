@@ -70,6 +70,12 @@ func actionsCommand(client *api.Client, args []string) {
 	entityType := actionsCmd.String("type", "", "Entity type to list actions for")
 	actionsCmd.Parse(args)
 
+	if *entityType == "" {
+		fmt.Println("Entity type is required.")
+		actionsCmd.Usage()
+		os.Exit(1)
+	}
+
 	actions, err := client.ListActions(*entityType)
 	if err != nil {
 		utils.ErrorLogger.Println("Failed to list actions:", err)
@@ -78,10 +84,10 @@ func actionsCommand(client *api.Client, args []string) {
 
 	// Display actions
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "Name\tLabel\tOnType\tInstanceOptional")
-	fmt.Fprintln(w, "----\t-----\t------\t----------------")
+	fmt.Fprintln(w, "Name\tLabel\tInstanceOptional")
+	fmt.Fprintln(w, "----\t-----\t----------------")
 	for _, action := range actions {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%v\n", action.Name, action.Label, action.OnType, action.InstanceOptional)
+		fmt.Fprintf(w, "%s\t%s\t%v\n", action.Name, action.Label, action.InstanceOptional)
 	}
 	w.Flush()
 }
@@ -89,32 +95,49 @@ func actionsCommand(client *api.Client, args []string) {
 func executeCommand(client *api.Client, args []string) {
 	executeCmd := flag.NewFlagSet("execute", flag.ExitOnError)
 	actionName := executeCmd.String("name", "", "Name of the action to execute")
+	entityType := executeCmd.String("type", "", "Entity type of the action")
+	inputValues := executeCmd.String("inputs", "", "Comma-separated key=value pairs of input values")
 	executeCmd.Parse(args)
 
-	if *actionName == "" {
-		fmt.Println("Action name is required.")
+	if *entityType == "" || *actionName == "" {
+		fmt.Println("Both entity type and action name are required.")
 		executeCmd.Usage()
 		os.Exit(1)
 	}
 
 	// Get action details to know input fields
-	action, err := client.GetAction(*actionName)
+	action, err := client.GetAction(*entityType, *actionName)
 	if err != nil {
 		utils.ErrorLogger.Println("Failed to get action details:", err)
 		os.Exit(1)
 	}
 
-	// Collect input values from the user
 	inputs := make(map[string]interface{})
+
+	// Parse inputValues if provided
+	if *inputValues != "" {
+		for _, kv := range strings.Split(*inputValues, ",") {
+			parts := strings.SplitN(kv, "=", 2)
+			if len(parts) != 2 {
+				fmt.Printf("Invalid input: %s\n", kv)
+				os.Exit(1)
+			}
+			inputs[parts[0]] = parts[1]
+		}
+	}
+
+	// Collect missing input values interactively
 	for _, field := range action.InFields {
-		fmt.Printf("Enter value for %s (%s): ", field.Name, field.ColumnType)
-		var value string
-		fmt.Scanln(&value)
-		inputs[field.Name] = value
+		if _, ok := inputs[field.Name]; !ok {
+			fmt.Printf("Enter value for %s (%s): ", field.Name, field.ColumnType)
+			var value string
+			fmt.Scanln(&value)
+			inputs[field.Name] = value
+		}
 	}
 
 	// Execute the action
-	result, err := client.ExecuteAction(*actionName, inputs)
+	result, err := client.ExecuteAction(*entityType, *actionName, inputs)
 	if err != nil {
 		utils.ErrorLogger.Println("Failed to execute action:", err)
 		os.Exit(1)
@@ -122,7 +145,8 @@ func executeCommand(client *api.Client, args []string) {
 
 	// Display the result
 	fmt.Println("Action executed successfully. Result:")
-	fmt.Println(result)
+	resultJSON, _ := json.MarshalIndent(result, "", "  ")
+	fmt.Println(string(resultJSON))
 }
 
 func permissionCommand(client *api.Client, args []string) {
