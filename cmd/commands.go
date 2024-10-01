@@ -11,6 +11,7 @@ import (
 	"jsonapi-cli-llm/utils"
 	"os"
 	"strings"
+	"text/tabwriter"
 )
 
 func main() {
@@ -25,7 +26,7 @@ func main() {
 	}
 
 	// Create API client
-	client, err := api.NewClient(config.BaseURL, config.APIKey) // Modify this line
+	client, err := api.NewClient(config.BaseURL, config.APIKey)
 	if err != nil {
 		utils.ErrorLogger.Println("Failed to create API client:", err)
 		os.Exit(1)
@@ -239,13 +240,80 @@ func listCommand(client *api.Client, args []string) {
 		os.Exit(1)
 	}
 
-	output, err := json.MarshalIndent(doc, "", "  ")
+	// Process and display the data
+	resources, err := parseResourceList(doc.Data)
 	if err != nil {
-		utils.ErrorLogger.Println("Failed to marshal response:", err)
+		utils.ErrorLogger.Println("Failed to parse resource data:", err)
 		os.Exit(1)
 	}
 
-	fmt.Println(string(output))
+	displayResourceTable(resources)
+}
+
+func parseResourceList(data interface{}) ([]*models.Resource, error) {
+	dataBytes, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	var resources []*models.Resource
+	err = json.Unmarshal(dataBytes, &resources)
+	if err != nil {
+		return nil, err
+	}
+	return resources, nil
+}
+
+func displayResourceTable(resources []*models.Resource) {
+	// Get the list of attribute keys
+	attributeKeys := collectAttributeKeys(resources)
+
+	// Initialize tabwriter
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+
+	// Print table header
+	header := append([]string{"ID", "Type"}, attributeKeys...)
+	fmt.Fprintln(w, strings.Join(header, "\t"))
+
+	// Print separator
+	separator := make([]string, len(header))
+	for i := range separator {
+		separator[i] = strings.Repeat("-", 10)
+	}
+	fmt.Fprintln(w, strings.Join(separator, "\t"))
+
+	// Iterate over resources
+	for _, res := range resources {
+		row := []string{res.ID, res.Type}
+		for _, key := range attributeKeys {
+			value := ""
+			if val, ok := res.Attributes[key]; ok {
+				strVal := fmt.Sprintf("%v", val)
+				if len(strVal) > 100 {
+					strVal = strVal[:100] + "..." // Truncate long strings
+				}
+				value = strVal
+			}
+			row = append(row, value)
+		}
+		fmt.Fprintln(w, strings.Join(row, "\t"))
+	}
+
+	// Flush the writer
+	w.Flush()
+}
+
+func collectAttributeKeys(resources []*models.Resource) []string {
+	keysMap := make(map[string]struct{})
+	for _, res := range resources {
+		for key := range res.Attributes {
+			keysMap[key] = struct{}{}
+		}
+	}
+	var keys []string
+	for key := range keysMap {
+		keys = append(keys, key)
+	}
+	return keys
 }
 
 func relationCommand(client *api.Client, args []string) {
