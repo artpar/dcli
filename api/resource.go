@@ -9,7 +9,7 @@ import (
 )
 
 func (c *Client) Create(resource *models.Resource) (*models.Resource, error) {
-	path := fmt.Sprintf("%s", resource.Type)
+	path := fmt.Sprintf("api/%s", resource.Type)
 	doc := &models.Document{
 		Data: resource,
 	}
@@ -26,7 +26,7 @@ func (c *Client) Create(resource *models.Resource) (*models.Resource, error) {
 }
 
 func (c *Client) Read(resourceType, id string) (*models.Resource, error) {
-	path := fmt.Sprintf("%s/%s", resourceType, id)
+	path := fmt.Sprintf("api/%s/%s", resourceType, id)
 	var respDoc models.Document
 	err := c.get(path, nil, &respDoc)
 	if err != nil {
@@ -43,7 +43,7 @@ func (c *Client) Update(resource *models.Resource) (*models.Resource, error) {
 	if resource.ID == "" {
 		return nil, fmt.Errorf("resource ID is required for update")
 	}
-	path := fmt.Sprintf("%s/%s", resource.Type, resource.ID)
+	path := fmt.Sprintf("api/%s/%s", resource.Type, resource.ID)
 	doc := &models.Document{
 		Data: resource,
 	}
@@ -60,7 +60,7 @@ func (c *Client) Update(resource *models.Resource) (*models.Resource, error) {
 }
 
 func (c *Client) Delete(resourceType, id string) error {
-	path := fmt.Sprintf("%s/%s", resourceType, id)
+	path := fmt.Sprintf("api/%s/%s", resourceType, id)
 	err := c.delete(path)
 	if err != nil {
 		return err

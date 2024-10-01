@@ -13,7 +13,7 @@ import (
 )
 
 func (c *Client) FetchRelations(resourceType, id, relation string) (*models.Document, error) {
-	path := fmt.Sprintf("%s/%s/%s", resourceType, id, relation)
+	path := fmt.Sprintf("api/%s/%s/%s", resourceType, id, relation)
 	var respDoc models.Document
 	err := c.get(path, nil, &respDoc)
 	if err != nil {
@@ -23,7 +23,7 @@ func (c *Client) FetchRelations(resourceType, id, relation string) (*models.Docu
 }
 
 func (c *Client) GetRelationship(resourceType, id, relation string) (*models.Document, error) {
-	path := fmt.Sprintf("%s/%s/relationships/%s", resourceType, id, relation)
+	path := fmt.Sprintf("api/%s/%s/relationships/%s", resourceType, id, relation)
 	var respDoc models.Document
 	err := c.get(path, nil, &respDoc)
 	if err != nil {
@@ -33,7 +33,7 @@ func (c *Client) GetRelationship(resourceType, id, relation string) (*models.Doc
 }
 
 func (c *Client) UpdateRelationship(resourceType, id, relation string, data interface{}) (*models.Document, error) {
-	path := fmt.Sprintf("%s/%s/relationships/%s", resourceType, id, relation)
+	path := fmt.Sprintf("api/%s/%s/relationships/%s", resourceType, id, relation)
 	doc := &models.Document{
 		Data: data,
 	}
@@ -46,7 +46,7 @@ func (c *Client) UpdateRelationship(resourceType, id, relation string, data inte
 }
 
 func (c *Client) AddToRelationship(resourceType, id, relation string, data interface{}) (*models.Document, error) {
-	path := fmt.Sprintf("%s/%s/relationships/%s", resourceType, id, relation)
+	path := fmt.Sprintf("api/%s/%s/relationships/%s", resourceType, id, relation)
 	doc := &models.Document{
 		Data: data,
 	}
@@ -59,7 +59,7 @@ func (c *Client) AddToRelationship(resourceType, id, relation string, data inter
 }
 
 func (c *Client) DeleteFromRelationship(resourceType, id, relation string, data interface{}) error {
-	path := fmt.Sprintf("%s/%s/relationships/%s", resourceType, id, relation)
+	path := fmt.Sprintf("api/%s/%s/relationships/%s", resourceType, id, relation)
 	doc := &models.Document{
 		Data: data,
 	}

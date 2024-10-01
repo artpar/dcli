@@ -8,7 +8,7 @@ import (
 )
 
 func (c *Client) Filter(resourceType string, filters map[string]string) (*models.Document, error) {
-	path := fmt.Sprintf("%s", resourceType)
+	path := fmt.Sprintf("api/%s", resourceType)
 	queryParams := make(map[string]string)
 
 	for k, v := range filters {

@@ -16,7 +16,7 @@ type ListOptions struct {
 }
 
 func (c *Client) List(resourceType string, options *ListOptions) (*models.Document, error) {
-	path := fmt.Sprintf("%s", resourceType)
+	path := fmt.Sprintf("api/%s", resourceType)
 	queryParams := make(map[string]string)
 
 	if options != nil {
