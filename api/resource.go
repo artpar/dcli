@@ -5,8 +5,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-
-	"your_project/models"
+	"jsonapi-cli-llm/models"
 )
 
 func (c *Client) Create(resource *models.Resource) (*models.Resource, error) {

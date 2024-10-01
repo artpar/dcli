@@ -11,21 +11,6 @@ import (
 	"time"
 )
 
-// api/client.go
-
-package api
-
-import (
-"bytes"
-"encoding/json"
-"errors"
-"fmt"
-"io"
-"net/http"
-"net/url"
-"time"
-)
-
 // Client is the API client that performs all operations against the JSON:API server.
 type Client struct {
 	BaseURL    *url.URL

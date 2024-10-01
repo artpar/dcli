@@ -6,11 +6,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"jsonapi-cli-llm/api"
+	"jsonapi-cli-llm/models"
+	"jsonapi-cli-llm/utils"
 	"os"
-
-	"your_project/api"
-	"your_project/models"
-	"your_project/utils"
 )
 
 func main() {
