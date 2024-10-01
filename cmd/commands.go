@@ -34,7 +34,7 @@ func main() {
 
 	// Parse command-line arguments
 	if len(os.Args) < 2 {
-		fmt.Println("Expected 'create', 'read', 'update', 'delete', 'list', 'relation' subcommands")
+		fmt.Println("Expected 'create', 'read', 'update', 'delete', 'list', 'relation', 'describe' subcommands")
 		os.Exit(1)
 	}
 
@@ -49,12 +49,12 @@ func main() {
 		deleteCommand(client, os.Args[2:])
 	case "list":
 		listCommand(client, os.Args[2:])
-	case "describe":
-		describeCommand(client, os.Args[2:])
 	case "relation":
 		relationCommand(client, os.Args[2:])
+	case "describe":
+		describeCommand(client, os.Args[2:])
 	default:
-		fmt.Println("Expected 'create', 'read', 'update', 'delete', 'list', 'relation' subcommands")
+		fmt.Println("Expected 'create', 'read', 'update', 'delete', 'list', 'relation', 'describe' subcommands")
 		os.Exit(1)
 	}
 }
@@ -78,7 +78,7 @@ func describeCommand(client *api.Client, args []string) {
 	displayEntityModel(*entityName, model)
 }
 
-func displayEntityModel(entityName string, model *api.EntityModel) {
+func displayEntityModel(entityName string, model *api.TableInfo) {
 	standardColumns := map[string]struct{}{
 		"id":           {},
 		"version":      {},
@@ -88,45 +88,64 @@ func displayEntityModel(entityName string, model *api.EntityModel) {
 		"permission":   {},
 	}
 
+	columns := []api.ColumnInfo{}
+	relations := []api.ColumnInfo{}
+
+	for _, col := range model.Columns {
+		if _, ok := standardColumns[col.Name]; ok {
+			continue // Skip standard columns
+		}
+		if col.JsonApi != "" {
+			relations = append(relations, col)
+		} else {
+			columns = append(columns, col)
+		}
+	}
+
 	// Initialize tabwriter
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
-	fmt.Fprintf(w, "Entity: %s\n", entityName)
-	fmt.Fprintln(w, "Columns:")
-	fmt.Fprintln(w, "Name\tType\tData Type\tDescription")
-	fmt.Fprintln(w, "----\t----\t---------\t-----------")
+	fmt.Fprintf(w, "Entity: %s\n\n", entityName)
 
-	for name, col := range model.ColumnModel {
-		if _, ok := standardColumns[name]; ok {
-			continue // Skip standard columns
-		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", name, col.ColumnType, col.DataType, col.ColumnDescription)
-	}
+	// Display Columns
+	if len(columns) > 0 {
+		fmt.Fprintln(w, "Columns:")
+		fmt.Fprintln(w, "Name\tType\tData Type\tDescription")
+		fmt.Fprintln(w, "----\t----\t---------\t-----------")
 
-	w.Flush()
-
-	if len(model.Relationships) > 0 {
-		fmt.Println("\nRelationships:")
-		fmt.Fprintln(w, "Name\tType\tRelated Entity")
-		fmt.Fprintln(w, "----\t----\t--------------")
-
-		for name, rel := range model.Relationships {
-			fmt.Fprintf(w, "%s\t%s\t%s\n", name, rel.RelationType, rel.RelatedType)
+		for _, col := range columns {
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", col.Name, col.ColumnType, col.DataType, col.ColumnDescription)
 		}
 
 		w.Flush()
 	}
 
+	// Display Relations
+	if len(relations) > 0 {
+		fmt.Println("\nRelations:")
+		fmt.Fprintln(w, "Name\tRelation Type\tRelated Entity")
+		fmt.Fprintln(w, "----\t-------------\t--------------")
+
+		for _, rel := range relations {
+			fmt.Fprintf(w, "%s\t%s\t%s\n", rel.Name, rel.JsonApi, rel.Type)
+		}
+
+		w.Flush()
+	}
+
+	// Display Actions
 	if len(model.Actions) > 0 {
 		fmt.Println("\nActions:")
-		fmt.Fprintln(w, "Name\tLabel\tDescription")
-		fmt.Fprintln(w, "----\t-----\t-----------")
-
 		for _, action := range model.Actions {
-			fmt.Fprintf(w, "%s\t%s\t%s\n", action.Name, action.Label, action.Description)
+			fmt.Fprintf(w, "\nName: %s\nLabel: %s\nDescription: %s\n", action.Name, action.Label, action.Description)
+			fmt.Fprintln(w, "Input Fields:")
+			fmt.Fprintln(w, "Name\tType\tData Type")
+			fmt.Fprintln(w, "----\t----\t---------")
+			for _, inField := range action.InFields {
+				fmt.Fprintf(w, "%s\t%s\t%s\n", inField.Name, inField.ColumnType, inField.DataType)
+			}
+			w.Flush()
 		}
-
-		w.Flush()
 	}
 }
 

@@ -9,19 +9,7 @@ import (
 	"jsonapi-cli-llm/utils"
 	"net/http"
 	"net/url"
-	"strings"
 )
-
-// ColumnInfo represents information about a column.
-type ColumnInfo struct {
-	Name              string         `json:"Name"`
-	ColumnName        string         `json:"ColumnName"`
-	ColumnDescription string         `json:"ColumnDescription"`
-	ColumnType        string         `json:"ColumnType"`
-	DataType          string         `json:"DataType"`
-	ForeignKeyData    ForeignKeyData `json:"ForeignKeyData"` // Add this line
-	// Include other fields as necessary
-}
 
 // ForeignKeyData represents foreign key information for a column.
 type ForeignKeyData struct {
@@ -30,12 +18,36 @@ type ForeignKeyData struct {
 	KeyName    string `json:"KeyName"`
 }
 
-// Action represents an action that can be performed on the entity.
 type Action struct {
-	Name        string `json:"Name"`
-	Label       string `json:"Label"`
-	Description string `json:"Description"`
+	Name                    string       `json:"Name"`
+	Label                   string       `json:"Label"`
+	Description             string       `json:"Description"`
+	OnType                  string       `json:"OnType"`
+	InstanceOptional        bool         `json:"InstanceOptional"`
+	RequestSubjectRelations []string     `json:"RequestSubjectRelations"`
+	ReferenceId             string       `json:"ReferenceId"`
+	InFields                []ColumnInfo `json:"InFields"`
+	OutFields               []Outcome    `json:"OutFields"`
+	Validations             []ColumnTag  `json:"Validations"`
+	Conformations           []ColumnTag  `json:"Conformations"`
 	// Add other fields as necessary
+}
+
+// Outcome and ColumnTag are placeholders; define them as needed
+
+type Outcome struct {
+	Type            string
+	Method          string // method name
+	Reference       string
+	SkipInResponse  bool
+	Condition       string
+	Attributes      map[string]interface{}
+	ContinueOnError bool
+}
+
+type ColumnTag struct {
+	ColumnName string `json:"ColumnName"`
+	Tags       string `json:"Tags"`
 }
 
 // Relationship represents a relationship with another entity.
@@ -44,17 +56,72 @@ type Relationship struct {
 	RelatedType  string `json:"RelatedType"`  // e.g., user_account
 	// Add other fields as necessary
 }
+type AuthPermission int64
 
-// EntityModel represents the model of an entity.
-type EntityModel struct {
-	ColumnModel   map[string]ColumnInfo `json:"ColumnModel"`
-	Actions       []Action              `json:"Actions"`
-	Relationships map[string]Relationship
-	// Add other fields as necessary
+// TableInfo represents the model of an entity.
+
+type TableInfo struct {
+	TableName              string              `db:"table_name" json:"TableName"`
+	TableId                int                 `json:"TableId"`
+	DefaultPermission      AuthPermission      `db:"default_permission" json:"DefaultPermission"`
+	Columns                []ColumnInfo        `json:"Columns"`
+	Relations              []TableRelation     `json:"Relations"`
+	IsTopLevel             bool                `db:"is_top_level" json:"IsTopLevel"`
+	Permission             AuthPermission      `json:"Permission"`
+	UserId                 uint64              `db:"user_account_id" json:"UserId"`
+	IsHidden               bool                `db:"is_hidden" json:"IsHidden"`
+	IsJoinTable            bool                `db:"is_join_table" json:"IsJoinTable"`
+	IsStateTrackingEnabled bool                `db:"is_state_tracking_enabled" json:"IsStateTrackingEnabled"`
+	IsAuditEnabled         bool                `db:"is_audit_enabled" json:"IsAuditEnabled"`
+	TranslationsEnabled    bool                `db:"translation_enabled" json:"TranslationsEnabled"`
+	DefaultGroups          []string            `db:"default_groups" json:"DefaultGroups"`
+	DefaultRelations       map[string][]string `db:"default_relations" json:"DefaultRelations"`
+	Validations            []ColumnTag         `json:"Validations"`
+	Conformations          []ColumnTag         `json:"Conformations"`
+	DefaultOrder           string              `json:"DefaultOrder"`
+	Icon                   string              `json:"Icon"`
+	CompositeKeys          [][]string          `json:"CompositeKeys"`
+	Actions                []Action            `json:"Actions"` // Add this line
+}
+
+type ColumnInfo struct {
+	Name              string         `db:"name" json:"Name"`
+	ColumnName        string         `db:"column_name" json:"ColumnName"`
+	ColumnDescription string         `db:"column_description" json:"ColumnDescription"`
+	ColumnType        string         `db:"column_type" json:"ColumnType"`
+	IsPrimaryKey      bool           `db:"is_primary_key" json:"IsPrimaryKey"`
+	IsAutoIncrement   bool           `db:"is_auto_increment" json:"IsAutoIncrement"`
+	IsIndexed         bool           `db:"is_indexed" json:"IsIndexed"`
+	IsUnique          bool           `db:"is_unique" json:"IsUnique"`
+	IsNullable        bool           `db:"is_nullable" json:"IsNullable"`
+	Permission        uint64         `db:"permission" json:"Permission"`
+	IsForeignKey      bool           `db:"is_foreign_key" json:"IsForeignKey"`
+	ExcludeFromApi    bool           `db:"exclude_from_api" json:"ExcludeFromApi"`
+	ForeignKeyData    ForeignKeyData `db:"foreign_key_data" json:"ForeignKeyData"`
+	DataType          string         `db:"data_type" json:"DataType"`
+	DefaultValue      string         `db:"default_value" json:"DefaultValue"`
+	Options           []ValueOptions `json:"Options"`
+	JsonApi           string         `json:"jsonApi"` // For relations
+	Type              string         `json:"type"`    // Related entity type
+}
+
+type ValueOptions struct {
+	ValueType string
+	Value     interface{}
+	Label     string
+}
+
+type TableRelation struct {
+	Subject     string
+	Object      string
+	Relation    string
+	SubjectName string
+	ObjectName  string
+	Columns     []ColumnInfo
 }
 
 // GetEntityModel fetches the entity model from the server.
-func (c *Client) GetEntityModel(entityName string) (*EntityModel, error) {
+func (c *Client) GetEntityModel(entityName string) (*TableInfo, error) {
 	path := fmt.Sprintf("jsmodel/%s.js", entityName)
 	rel, err := url.Parse(path)
 	if err != nil {
@@ -93,28 +160,10 @@ func (c *Client) GetEntityModel(entityName string) (*EntityModel, error) {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var model EntityModel
+	var model TableInfo
 	err = json.Unmarshal(body, &model)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse entity model: %w", err)
-	}
-
-	// Process relationships
-	model.Relationships = make(map[string]Relationship)
-	for name, col := range model.ColumnModel {
-		if col.ColumnType == "entity" || col.ColumnType == "alias" {
-			relationType := "hasOne"
-			if col.ForeignKeyData.Namespace != "" {
-				relatedType := col.ForeignKeyData.Namespace
-				if col.ColumnType == "entity" && strings.Contains(col.DataType, "[]") {
-					relationType = "hasMany"
-				}
-				model.Relationships[name] = Relationship{
-					RelationType: relationType,
-					RelatedType:  relatedType,
-				}
-			}
-		}
 	}
 
 	return &model, nil
