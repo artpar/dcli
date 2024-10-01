@@ -34,7 +34,7 @@ func main() {
 
 	// Parse command-line arguments
 	if len(os.Args) < 2 {
-		fmt.Println("Expected 'create', 'read', 'update', 'delete', 'list', 'relation', 'describe' subcommands")
+		fmt.Println("Expected 'create', 'read', 'update', 'delete', 'list', 'relation', 'describe', 'permission' subcommands")
 		os.Exit(1)
 	}
 
@@ -53,10 +53,117 @@ func main() {
 		relationCommand(client, os.Args[2:])
 	case "describe":
 		describeCommand(client, os.Args[2:])
+	case "permission":
+		permissionCommand(client, os.Args[2:])
 	default:
-		fmt.Println("Expected 'create', 'read', 'update', 'delete', 'list', 'relation', 'describe' subcommands")
+		fmt.Println("Expected 'create', 'read', 'update', 'delete', 'list', 'relation', 'describe', 'permission' subcommands")
 		os.Exit(1)
 	}
+}
+
+func permissionCommand(client *api.Client, args []string) {
+	permCmd := flag.NewFlagSet("permission", flag.ExitOnError)
+	entityType := permCmd.String("type", "", "Entity type")
+	objectID := permCmd.String("id", "", "Object ID (reference_id)")
+	action := permCmd.String("action", "view", "Action to perform: view, set, add, remove")
+	permissions := permCmd.String("permissions", "", "Comma-separated list of permissions to set/add/remove")
+	permCmd.Parse(args)
+
+	if *entityType == "" || *objectID == "" {
+		permCmd.Usage()
+		os.Exit(1)
+	}
+
+	switch *action {
+	case "view":
+		viewPermissions(client, *entityType, *objectID)
+	case "set":
+		setPermissions(client, *entityType, *objectID, *permissions)
+	case "add":
+		addPermissions(client, *entityType, *objectID, *permissions)
+	case "remove":
+		removePermissions(client, *entityType, *objectID, *permissions)
+	default:
+		fmt.Println("Invalid action. Expected 'view', 'set', 'add', or 'remove'.")
+		os.Exit(1)
+	}
+}
+func viewPermissions(client *api.Client, entityType, objectID string) {
+	perm, err := client.GetPermissions(entityType, objectID)
+	if err != nil {
+		utils.ErrorLogger.Println("Failed to get permissions:", err)
+		os.Exit(1)
+	}
+
+	permNames := api.AuthPermissionToStrings(perm)
+	fmt.Printf("Permissions for %s (%s):\n", entityType, objectID)
+	for _, name := range permNames {
+		fmt.Println(" -", name)
+	}
+}
+
+func setPermissions(client *api.Client, entityType, objectID, permissions string) {
+	perm, err := api.StringsToAuthPermission(strings.Split(permissions, ","))
+	if err != nil {
+		utils.ErrorLogger.Println("Invalid permissions:", err)
+		os.Exit(1)
+	}
+
+	err = client.SetPermissions(entityType, objectID, perm)
+	if err != nil {
+		utils.ErrorLogger.Println("Failed to set permissions:", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Permissions set successfully.")
+}
+
+func addPermissions(client *api.Client, entityType, objectID, permissions string) {
+	existingPerm, err := client.GetPermissions(entityType, objectID)
+	if err != nil {
+		utils.ErrorLogger.Println("Failed to get existing permissions:", err)
+		os.Exit(1)
+	}
+
+	newPerm, err := api.StringsToAuthPermission(strings.Split(permissions, ","))
+	if err != nil {
+		utils.ErrorLogger.Println("Invalid permissions:", err)
+		os.Exit(1)
+	}
+
+	combinedPerm := existingPerm | newPerm
+
+	err = client.SetPermissions(entityType, objectID, combinedPerm)
+	if err != nil {
+		utils.ErrorLogger.Println("Failed to add permissions:", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Permissions added successfully.")
+}
+
+func removePermissions(client *api.Client, entityType, objectID, permissions string) {
+	existingPerm, err := client.GetPermissions(entityType, objectID)
+	if err != nil {
+		utils.ErrorLogger.Println("Failed to get existing permissions:", err)
+		os.Exit(1)
+	}
+
+	remPerm, err := api.StringsToAuthPermission(strings.Split(permissions, ","))
+	if err != nil {
+		utils.ErrorLogger.Println("Invalid permissions:", err)
+		os.Exit(1)
+	}
+
+	updatedPerm := existingPerm &^ remPerm
+
+	err = client.SetPermissions(entityType, objectID, updatedPerm)
+	if err != nil {
+		utils.ErrorLogger.Println("Failed to remove permissions:", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Permissions removed successfully.")
 }
 
 func describeCommand(client *api.Client, args []string) {

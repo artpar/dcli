@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"jsonapi-cli-llm/utils"
 	"net/http"
 	"net/url"
@@ -78,6 +79,91 @@ func (c *Client) doRequest(req *http.Request, v interface{}) error {
 	}
 
 	return errors.New(apiError.Error())
+}
+
+func (c *Client) GetResource(path string) (map[string]interface{}, error) {
+	u := c.BaseURL.ResolveReference(&url.URL{Path: path})
+
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add headers
+	for key, values := range c.Headers {
+		for _, value := range values {
+			req.Header.Add(key, value)
+		}
+	}
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, fmt.Errorf("failed to get resource: %s", resp.Status)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]interface{}
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (c *Client) PatchResource(path string, data map[string]interface{}) (map[string]interface{}, error) {
+	u := c.BaseURL.ResolveReference(&url.URL{Path: path})
+
+	bodyData, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PATCH", u.String(), bytes.NewReader(bodyData))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	// Add headers
+	for key, values := range c.Headers {
+		for _, value := range values {
+			req.Header.Add(key, value)
+		}
+	}
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, fmt.Errorf("failed to patch resource: %s", resp.Status)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]interface{}
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // APIError represents an error returned by the API.
