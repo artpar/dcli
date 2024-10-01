@@ -37,7 +37,7 @@ func DefaultConfigPath() string {
 	if err != nil {
 		return "./config.json"
 	}
-	return filepath.Join(homeDir, ".your_project", "config.json")
+	return filepath.Join(homeDir, ".dcli", "config.json")
 }
 
 func SaveConfig(config *Config, configPath string) error {

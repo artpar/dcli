@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"jsonapi-cli-llm/utils"
 	"net/http"
 	"net/url"
 	"time"
@@ -49,6 +50,7 @@ func (c *Client) doRequest(req *http.Request, v interface{}) error {
 		}
 	}
 
+	utils.InfoLogger.Printf("Request URL: %s", req.URL)
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
