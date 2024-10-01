@@ -3,12 +3,12 @@
 package main
 
 import (
+	"dcli/api"
+	"dcli/models"
+	"dcli/utils"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"jsonapi-cli-llm/api"
-	"jsonapi-cli-llm/models"
-	"jsonapi-cli-llm/utils"
 	"os"
 	"strings"
 	"text/tabwriter"

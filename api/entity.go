@@ -3,10 +3,10 @@
 package api
 
 import (
+	"dcli/utils"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"jsonapi-cli-llm/utils"
 	"net/http"
 	"net/url"
 )

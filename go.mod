@@ -1,3 +1,3 @@
-module jsonapi-cli-llm
+module dcli
 
 go 1.22

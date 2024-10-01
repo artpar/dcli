@@ -2,12 +2,12 @@ package api
 
 import (
 	"bytes"
+	"dcli/utils"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"jsonapi-cli-llm/utils"
 	"net/http"
 	"net/url"
 	"time"

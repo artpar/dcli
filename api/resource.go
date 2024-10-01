@@ -3,9 +3,9 @@
 package api
 
 import (
+	"dcli/models"
 	"encoding/json"
 	"fmt"
-	"jsonapi-cli-llm/models"
 )
 
 func (c *Client) Create(resource *models.Resource) (*models.Resource, error) {

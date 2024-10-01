@@ -4,10 +4,10 @@ package api
 
 import (
 	"bytes"
+	"dcli/models"
 	"encoding/json"
 	"fmt"
 	"io"
-	"jsonapi-cli-llm/models"
 	"net/http"
 	"net/url"
 )

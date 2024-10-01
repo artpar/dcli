@@ -3,8 +3,8 @@
 package api
 
 import (
+	"dcli/models"
 	"fmt"
-	"jsonapi-cli-llm/models"
 )
 
 func (c *Client) Filter(resourceType string, filters map[string]string) (*models.Document, error) {

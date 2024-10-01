@@ -3,8 +3,8 @@
 package api
 
 import (
+	"dcli/models"
 	"fmt"
-	"jsonapi-cli-llm/models"
 )
 
 type ListOptions struct {
