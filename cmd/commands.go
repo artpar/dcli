@@ -86,15 +86,9 @@ func createCommand(client *api.Client, args []string) {
 		os.Exit(1)
 	}
 
-	output, err := json.MarshalIndent(createdResource, "", "  ")
-	if err != nil {
-		utils.ErrorLogger.Println("Failed to marshal response:", err)
-		os.Exit(1)
-	}
-
-	fmt.Println(string(output))
+	// Display the created resource
+	displaySingleResource(createdResource)
 }
-
 func readCommand(client *api.Client, args []string) {
 	readCmd := flag.NewFlagSet("read", flag.ExitOnError)
 	resourceType := readCmd.String("type", "", "Resource type")
@@ -112,13 +106,32 @@ func readCommand(client *api.Client, args []string) {
 		os.Exit(1)
 	}
 
-	output, err := json.MarshalIndent(resource, "", "  ")
-	if err != nil {
-		utils.ErrorLogger.Println("Failed to marshal response:", err)
-		os.Exit(1)
+	displaySingleResource(resource)
+}
+
+func displaySingleResource(resource *models.Resource) {
+	// Initialize tabwriter
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+
+	// Print header
+	fmt.Fprintln(w, "Field\tValue")
+	fmt.Fprintln(w, "-----\t-----")
+
+	// Print ID and Type
+	fmt.Fprintf(w, "ID\t%s\n", resource.ID)
+	fmt.Fprintf(w, "Type\t%s\n", resource.Type)
+
+	// Print attributes
+	for key, val := range resource.Attributes {
+		strVal := fmt.Sprintf("%v", val)
+		if len(strVal) > 100 {
+			strVal = strVal[:100] + "..." // Truncate long strings
+		}
+		fmt.Fprintf(w, "%s\t%s\n", key, strVal)
 	}
 
-	fmt.Println(string(output))
+	// Flush the writer
+	w.Flush()
 }
 
 func updateCommand(client *api.Client, args []string) {
@@ -151,14 +164,8 @@ func updateCommand(client *api.Client, args []string) {
 		utils.ErrorLogger.Println("Failed to update resource:", err)
 		os.Exit(1)
 	}
+	displaySingleResource(updatedResource)
 
-	output, err := json.MarshalIndent(updatedResource, "", "  ")
-	if err != nil {
-		utils.ErrorLogger.Println("Failed to marshal response:", err)
-		os.Exit(1)
-	}
-
-	fmt.Println(string(output))
 }
 
 func deleteCommand(client *api.Client, args []string) {
