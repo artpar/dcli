@@ -91,7 +91,8 @@ func displayEntityModel(entityName string, model *api.TableInfo) {
 	columns := []api.ColumnInfo{}
 	relations := []api.ColumnInfo{}
 
-	for _, col := range model.Columns {
+	for name, col := range model.ColumnModel {
+		col.Name = name // Assign the name from the map key
 		if _, ok := standardColumns[col.Name]; ok {
 			continue // Skip standard columns
 		}
@@ -102,7 +103,7 @@ func displayEntityModel(entityName string, model *api.TableInfo) {
 		}
 	}
 
-	// Initialize tabwriter
+	// Initialize tabwriter with wider padding for better formatting
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
 	fmt.Fprintf(w, "Entity: %s\n\n", entityName)
@@ -136,16 +137,34 @@ func displayEntityModel(entityName string, model *api.TableInfo) {
 	// Display Actions
 	if len(model.Actions) > 0 {
 		fmt.Println("\nActions:")
+		fmt.Fprintln(w, "Name\tLabel\tInput Fields")
+		fmt.Fprintln(w, "----\t-----\t------------")
+
+		// Collect action lines
+		actionLines := []string{}
 		for _, action := range model.Actions {
-			fmt.Fprintf(w, "\nName: %s\nLabel: %s\nDescription: %s\n", action.Name, action.Label, action.Description)
-			fmt.Fprintln(w, "Input Fields:")
-			fmt.Fprintln(w, "Name\tType\tData Type")
-			fmt.Fprintln(w, "----\t----\t---------")
+			// Collect input fields in a compact format
+			inputFields := []string{}
 			for _, inField := range action.InFields {
-				fmt.Fprintf(w, "%s\t%s\t%s\n", inField.Name, inField.ColumnType, inField.DataType)
+				inputFields = append(inputFields, fmt.Sprintf("%s(%s)", inField.Name, inField.ColumnType))
 			}
-			w.Flush()
+			inputFieldsStr := strings.Join(inputFields, ", ")
+
+			// Prepare the action line
+			actionLine := fmt.Sprintf("%s\t%s\t%s", action.Name, action.Label, inputFieldsStr)
+			actionLines = append(actionLines, actionLine)
 		}
+
+		// Display actions in two columns
+		for i := 0; i < len(actionLines); i += 2 {
+			line := actionLines[i]
+			if i+1 < len(actionLines) {
+				line += "\t\t" + actionLines[i+1]
+			}
+			fmt.Fprintln(w, line)
+		}
+
+		w.Flush()
 	}
 }
 

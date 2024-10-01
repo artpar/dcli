@@ -61,27 +61,29 @@ type AuthPermission int64
 // TableInfo represents the model of an entity.
 
 type TableInfo struct {
-	TableName              string              `db:"table_name" json:"TableName"`
-	TableId                int                 `json:"TableId"`
-	DefaultPermission      AuthPermission      `db:"default_permission" json:"DefaultPermission"`
-	Columns                []ColumnInfo        `json:"Columns"`
-	Relations              []TableRelation     `json:"Relations"`
-	IsTopLevel             bool                `db:"is_top_level" json:"IsTopLevel"`
-	Permission             AuthPermission      `json:"Permission"`
-	UserId                 uint64              `db:"user_account_id" json:"UserId"`
-	IsHidden               bool                `db:"is_hidden" json:"IsHidden"`
-	IsJoinTable            bool                `db:"is_join_table" json:"IsJoinTable"`
-	IsStateTrackingEnabled bool                `db:"is_state_tracking_enabled" json:"IsStateTrackingEnabled"`
-	IsAuditEnabled         bool                `db:"is_audit_enabled" json:"IsAuditEnabled"`
-	TranslationsEnabled    bool                `db:"translation_enabled" json:"TranslationsEnabled"`
-	DefaultGroups          []string            `db:"default_groups" json:"DefaultGroups"`
-	DefaultRelations       map[string][]string `db:"default_relations" json:"DefaultRelations"`
-	Validations            []ColumnTag         `json:"Validations"`
-	Conformations          []ColumnTag         `json:"Conformations"`
-	DefaultOrder           string              `json:"DefaultOrder"`
-	Icon                   string              `json:"Icon"`
-	CompositeKeys          [][]string          `json:"CompositeKeys"`
-	Actions                []Action            `json:"Actions"` // Add this line
+	TableName              string                `db:"table_name" json:"TableName"`
+	TableId                int                   `json:"TableId"`
+	DefaultPermission      AuthPermission        `db:"default_permission" json:"DefaultPermission"`
+	ColumnModel            map[string]ColumnInfo `json:"ColumnModel"` // Changed from Columns []ColumnInfo
+	Relations              []TableRelation       `json:"Relations"`
+	IsTopLevel             bool                  `db:"is_top_level" json:"IsTopLevel"`
+	Permission             AuthPermission        `json:"Permission"`
+	UserId                 uint64                `db:"user_account_id" json:"UserId"`
+	IsHidden               bool                  `db:"is_hidden" json:"IsHidden"`
+	IsJoinTable            bool                  `db:"is_join_table" json:"IsJoinTable"`
+	IsStateTrackingEnabled bool                  `db:"is_state_tracking_enabled" json:"IsStateTrackingEnabled"`
+	IsAuditEnabled         bool                  `db:"is_audit_enabled" json:"IsAuditEnabled"`
+	TranslationsEnabled    bool                  `db:"translation_enabled" json:"TranslationsEnabled"`
+	DefaultGroups          []string              `db:"default_groups" json:"DefaultGroups"`
+	DefaultRelations       map[string][]string   `db:"default_relations" json:"DefaultRelations"`
+	Validations            []ColumnTag           `json:"Validations"`
+	Conformations          []ColumnTag           `json:"Conformations"`
+	DefaultOrder           string                `json:"DefaultOrder"`
+	Icon                   string                `json:"Icon"`
+	CompositeKeys          [][]string            `json:"CompositeKeys"`
+	Actions                []Action              `json:"Actions"`
+	StateMachines          []interface{}         `json:"StateMachines"`
+	IsStateMachineEnabled  bool                  `json:"IsStateMachineEnabled"`
 }
 
 type ColumnInfo struct {
