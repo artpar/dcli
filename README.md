@@ -1,6 +1,8 @@
 # dcli
 
-**dcli** is a command-line interface (CLI) tool written in Go for interacting with JSON:API-compliant servers. It allows users to perform CRUD operations, manage relationships, and handle pagination and filtering through a simple command-line interface.
+**dcli** is a command-line interface (CLI) tool written in Go for interacting with JSON:API-compliant servers, specially daptin server
+
+It allows users to perform CRUD operations, manage relationships, and handle pagination and filtering through a simple command-line interface.
 
 
 ## Prerequisites
