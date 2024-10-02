@@ -4,6 +4,7 @@ package api
 
 import (
 	"bytes"
+	"dcli/models"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -92,7 +93,14 @@ func (c *Client) GetAction(entityType, actionName string) (*Action, error) {
 	}
 
 	// Construct the URL with filters
-	path := fmt.Sprintf("api/action?filter[OnType]=%s&filter[Name]=%s", url.QueryEscape(entityType), url.QueryEscape(actionName))
+	actionQuery, _ := json.Marshal([]map[string]interface{}{
+		{
+			"column":   "action_name",
+			"value":    actionName,
+			"operator": "eq",
+		},
+	})
+	path := fmt.Sprintf("api/action?query=%s", actionQuery)
 	rel, err := url.Parse(path)
 	if err != nil {
 		return nil, fmt.Errorf("invalid path: %w", err)
@@ -130,11 +138,7 @@ func (c *Client) GetAction(entityType, actionName string) (*Action, error) {
 
 	// Parse JSON API response
 	var jsonResponse struct {
-		Data []struct {
-			ID         string                 `json:"id"`
-			Type       string                 `json:"type"`
-			Attributes map[string]interface{} `json:"attributes"`
-		} `json:"data"`
+		Data []models.Resource `json:"data"`
 	}
 
 	err = json.Unmarshal(body, &jsonResponse)
@@ -148,20 +152,18 @@ func (c *Client) GetAction(entityType, actionName string) (*Action, error) {
 
 	item := jsonResponse.Data[0]
 
+	var action_schema = item.Attributes["action_schema"].(string)
 	var action Action
 	action.ReferenceId = item.ID
-	action.OnType = item.Type
-
-	// Map attributes to Action struct
-	err = mapToStruct(item.Attributes, &action)
+	err = json.Unmarshal([]byte(action_schema), &action)
 	if err != nil {
-		return nil, fmt.Errorf("failed to map action attributes: %w", err)
+		return nil, fmt.Errorf("failed to parse action schema: %w", err)
 	}
 
 	return &action, nil
 }
 
-func (c *Client) ExecuteAction(entityType, actionName string, inputs map[string]interface{}) (map[string]interface{}, error) {
+func (c *Client) ExecuteAction(entityType, actionName string, inputs map[string]interface{}) ([]map[string]interface{}, error) {
 	path := fmt.Sprintf("action/%s/%s", url.PathEscape(entityType), url.PathEscape(actionName))
 	rel, err := url.Parse(path)
 	if err != nil {
@@ -171,13 +173,7 @@ func (c *Client) ExecuteAction(entityType, actionName string, inputs map[string]
 	u := c.BaseURL.ResolveReference(rel)
 
 	// Prepare request body
-	data := map[string]interface{}{
-		"data": map[string]interface{}{
-			"type":       "action",
-			"attributes": inputs,
-		},
-	}
-
+	data := inputs
 	bodyData, err := json.Marshal(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request body: %w", err)
@@ -212,7 +208,7 @@ func (c *Client) ExecuteAction(entityType, actionName string, inputs map[string]
 		return nil, fmt.Errorf("action execution failed: %s\n%s", resp.Status, string(body))
 	}
 
-	var result map[string]interface{}
+	var result []map[string]interface{}
 	err = json.Unmarshal(body, &result)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse action execution result: %w", err)

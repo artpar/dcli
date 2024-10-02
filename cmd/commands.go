@@ -107,8 +107,6 @@ func executeCommand(client *api.Client, args []string) {
 
 	// Get action details to know input fields
 	action, err := client.GetAction(*entityType, *actionName)
-	// TODO: check why action not being fetched
-	fmt.Printf("%v", action)
 	if err != nil {
 		utils.ErrorLogger.Println("Failed to get action details:", err)
 		os.Exit(1)
