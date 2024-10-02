@@ -4,7 +4,9 @@ on:
   push:
     tags:
       - 'v*' # Triggers on version tags like v1.0.0
-
+permissions:
+  contents: write  # Grants write permissions to repository contents
+  
 jobs:
   release:
     name: Build and Release
